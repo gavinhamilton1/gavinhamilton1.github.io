@@ -1,17 +1,3 @@
-const images = ['fox1', 'fox2', 'fox3', 'fox4'];
-const imgElem = document.querySelector('img');
-
-function randomValueFromArray(array) {
-  const randomNo = Math.floor(Math.random() * array.length);
-  return array[randomNo];
-}
-
-setInterval(() => {
-  const randomChoice = randomValueFromArray(images);
-  imgElem.src = `images/${randomChoice}.jpg`;
-}, 2000);
-
-
 
 // Code to handle install prompt on desktop
 
@@ -28,7 +14,6 @@ window.addEventListener('beforeinstallprompt', (e) => {
   addBtn.style.display = 'block';
 
   addBtn.addEventListener('click', () => {
-    // hide our user interface that shows our A2HS button
     // Show the prompt
     deferredPrompt.prompt();
     // Wait for the user to respond to the prompt
