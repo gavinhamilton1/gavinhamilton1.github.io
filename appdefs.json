@@ -1,39 +1,48 @@
 {
     "launcher":{
-        "menu": [{
-            "title": "Cats App",
-            "target": "cats"
+        "menu": [
+            {
+                "title": "Cats App",
+                "target": "cats"
             },
             {
-            "title":"Monsters App",
-            "target": "monsters"
+                "title":"Monsters App",
+                "target": "monsters"
             },
             {
-            "title":"Robots App",
-            "target": "robots"
+                "title":"Robots App",
+                "target": "robots"
             },
             {
-            "title": "App Static Bundle List",
-            "target": "apps"
-            }]
-    },
-    "apps":[
-        {"id": "cats",
-        "type":"static",
-        "bundle": "cats_v1.0.1.zip",
-        "version": "1.0.1"},
-        {"id":"monsters",
-        "type":"static",
-        "bundle":"monsters_v1.0.1.zip",
-        "version":"1.0.1"},
-        {"id":"robots",
-        "type":"static",
-        "bundle": "robots_v1.0.1.zip",
-        "version":"1.0.1"}
-        {"id": "apps",
-        "type":"dynamic",
-        "bundle": "https://https://gavinhamilton1.github.io/index.html",
-        "version": "1.0.1"
-        }
-    ]
+                "title": "App Static Bundle List",
+                "target": "apps"
+            }
+        ],
+        "apps":[
+            {
+                "id": "cats",
+                "type":"static",
+                "bundle": "cats_v1.0.1.zip",
+                "version": "1.0.1"
+            },
+            {
+                "id":"monsters",
+                "type":"static",
+                "bundle":"monsters_v1.0.1.zip",
+                "version":"1.0.1"
+            },
+            {
+                "id":"robots",
+                "type":"static",
+                "bundle": "robots_v1.0.1.zip",
+                "version":"1.0.1"
+            },
+            {
+                "id": "apps",
+                "type":"dynamic",
+                "bundle": "https://https://gavinhamilton1.github.io/index.html",
+                "version": "1.0.1"
+            }
+        ]
+    }
 }
