@@ -1,0 +1,19 @@
+There are over 6000 active applications in the firm but there are fewer than 100 active mobile apps
+
+Mobile has traditionally been considered a complex and niche technology space and is often cost prohibitive to take advantage of as it usually requires dedicated hardware and specialized skillsets.
+
+Mobile web has often been considered a cost effective way to take advantage of the power of Mobile while leveraging existing resources, but that fails the majority of the time as you cannot lift and shift the workflows of a desktop app to mobile.  Very few web apps have responsive UIs, and are not optimized for mobile networks or devices, or  provide offline experiences.
+
+However, we feel that is about to change...
+
+There is a growing appetite in the firm for the use of micro front end architectures and a number of lob groups have micro front ends at the heart of their strategic platforms.  CIB Digital Platform, AWM Connect, Intranet 2.0 are a few examples.
+
+Also, when you consider that in every app there is a core subset of commonly used features, there is all of a sudden a huge opportunity to make those most useful features available through mobile giving a better user experience, with flexibility, productivity, and user satisfaction gains.
+
+So, how do we do enable this, while adhereing to all mobile security and compliance controls and without adding burden to development teams...
+
+Introducing: Harmoni
+
+Harmoni is a mobile framework that brings the power of micro front ends and small web apps to mobile.  But it does so much more.  It allows apps to be bundled, versionsed and deployed for online and offline use, giving a faster launch experience. It is policy controlled so you can target users, devices, OS versions with specific versions of apps.  It has a dynamic native navigation system so you can tailor the app experience to a specific user or group of users.  It provides a secure Javascript bridge to allow access to native features. It handles authorization flows and monitors resource usage and network calls so that web apps can't go rogue and impact the functioning of other apps or leak data outside the JPM perimeter. And it can inject code into the web app to enable or disable mobile specific UX to give a richer mobile experience.
+
+Through the Harmoni mobile app, every group can have a curated mobile presence without the burden and complexity of mobile product ownership.
