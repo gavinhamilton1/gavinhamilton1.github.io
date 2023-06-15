@@ -1,0 +1,55 @@
+{
+    "launcher":{
+        "launcher_title": "Harmoni Launcher",
+        "apps":[
+            {
+                "id": "cats",
+                "title": "Cats App",
+                "icon": "./logo192.png",
+                "visible": "true",
+                "type":"static",
+                "bundle": "cats_v1.0.1.zip",
+                "version": "1.0.1",
+                "nav": [
+                    {
+                        "title": "All Cats",
+                        "type": "static",
+                        "target":  "index.html"
+                    },
+                    {
+                        "title": "Some Cats",
+                        "type": "dynamic",
+                        "target":  "https://gavinhamilton1.github.io/index.html"
+
+                    }]
+            },
+            {
+                "id":"monsters",
+                "title": "Monsters App",
+                "icon": "./logo192.png",
+                "visible": "true",
+                "type":"static",
+                "bundle":"monsters_v1.0.1.zip",
+                "version":"1.0.1"
+            },
+            {
+                "id":"robots",
+                "title": "Robots App",
+                "icon": "./logo192.png",
+                "visible": "true",
+                "type":"static",
+                "bundle": "robots_v1.0.1.zip",
+                "version":"1.0.1"
+            },
+            {
+                "id": "Dogs",
+                "title": "Dogs App",
+                "icon": "",
+                "visible": "true",
+                "type":"dynamic",
+                "bundle": "https://gavinhamilton1.github.io/index.html",
+                "version": "1.0.1"
+            }
+        ]
+    }
+}
