@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CIB Unified Ingress: Resilience Posture</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy:      #0f2340;
+    --navy-mid:  #1a3a6a;
+    --navy-lite: #2a5298;
+    --slate:     #4a6a8a;
+    --steel:     #d0dae8;
+    --fog:       #eef3fa;
+    --white:     #ffffff;
+    --page:      #f4f7fb;
+    --green:     #1a6a40;
+    --green-bg:  #eaf5ee;
+    --green-bd:  #b8dfc6;
+    --amber:     #7a4400;
+    --amber-bg:  #fff3e0;
+    --amber-bd:  #f5c880;
+    --red:       #8B1A1A;
+    --red-bg:    #fdf0f0;
+    --red-bd:    #f0b8b8;
+    --purple:    #4a2a8a;
+    --purple-bg: #f2eeff;
+    --purple-bd: #c8b8f0;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--page);
+    color: var(--navy);
+    font-size: 13px;
+    line-height: 1.6;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .page {
+    max-width: 1100px;
+    margin: 0 auto;
+    background: var(--white);
+    box-shadow: 0 2px 24px rgba(15,35,64,0.10);
+  }
+
+  /* ── HEADER ── */
+  .header {
+    background: var(--navy);
+    padding: 28px 40px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 340px; height: 100%;
+    background: linear-gradient(135deg, transparent 40%, rgba(42,82,152,0.25) 100%);
+    pointer-events: none;
+  }
+  .header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 14px;
+  }
+  .eyebrow {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.45);
+    margin-bottom: 8px;
+  }
+  .header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--white);
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+  .header-meta {
+    text-align: right;
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+    line-height: 1.8;
+  }
+  .header-summary {
+    font-size: 12.5px;
+    color: rgba(255,255,255,0.65);
+    max-width: 760px;
+    line-height: 1.7;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    padding-top: 14px;
+  }
+  .header-summary strong {
+    color: rgba(255,255,255,0.9);
+    font-weight: 500;
+  }
+
+  /* ── POSTURE BADGES ── */
+  .posture-strip {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    border-bottom: 2px solid var(--steel);
+  }
+  .posture-cell {
+    padding: 14px 18px;
+    border-right: 1px solid var(--steel);
+  }
+  .posture-cell:last-child { border-right: none; }
+  .posture-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--slate);
+    margin-bottom: 4px;
+  }
+  .posture-value {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--navy-mid);
+  }
+  .posture-sub {
+    font-size: 10.5px;
+    color: var(--slate);
+    margin-top: 2px;
+  }
+
+  /* ── SECTION TITLE ── */
+  .section-title {
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--slate);
+    padding: 14px 40px 8px;
+    border-bottom: 1px solid var(--steel);
+    background: var(--fog);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 12px;
+    background: var(--navy-mid);
+    border-radius: 2px;
+  }
+
+  /* ── MAIN TABLE ── */
+  .content { padding: 0 0 0 0; }
+
+  .layer-table { width: 100%; border-collapse: collapse; }
+  .layer-table thead tr {
+    background: var(--navy);
+  }
+  .layer-table thead th {
+    padding: 9px 14px;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.6);
+    text-align: left;
+    border-right: 1px solid rgba(255,255,255,0.08);
+  }
+  .layer-table thead th:last-child { border-right: none; }
+
+  .layer-row { border-bottom: 1px solid var(--steel); }
+  .layer-row:last-child { border-bottom: none; }
+  .layer-row td {
+    padding: 14px;
+    vertical-align: top;
+    border-right: 1px solid var(--steel);
+  }
+  .layer-row td:last-child { border-right: none; }
+  .layer-row:nth-child(even) { background: var(--fog); }
+
+  /* layer id cell */
+  .layer-id {
+    width: 80px;
+    text-align: center;
+  }
+  .layer-badge {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 4px;
+  }
+  .layer-badge-sub {
+    font-size: 8.5px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--slate);
+    text-align: center;
+    line-height: 1.3;
+  }
+
+  .component-name {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--navy);
+    margin-bottom: 3px;
+  }
+  .component-desc {
+    font-size: 11.5px;
+    color: var(--slate);
+    line-height: 1.6;
+  }
+
+  .recovery-badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+    margin-bottom: 4px;
+  }
+  .badge-instant { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-bd); }
+  .badge-auto    { background: #e8f4fd; color: #1a5a8a; border: 1px solid #a8d0f0; }
+  .badge-minutes { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-bd); }
+  .badge-manual  { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-bd); }
+  .badge-tbc     { background: var(--purple-bg); color: var(--purple); border: 1px solid var(--purple-bd); }
+
+  .recovery-note {
+    font-size: 11px;
+    color: var(--slate);
+    line-height: 1.5;
+    margin-top: 2px;
+  }
+
+  .mechanism-item {
+    font-size: 11.5px;
+    color: #2a4a6a;
+    line-height: 1.6;
+    padding-left: 12px;
+    position: relative;
+    margin-bottom: 2px;
+  }
+  .mechanism-item::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--steel);
+    font-size: 10px;
+    top: 2px;
+  }
+
+  .rationale-text {
+    font-size: 11.5px;
+    color: #2a4a6a;
+    line-height: 1.65;
+  }
+  .rationale-text .flag {
+    display: inline-block;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+  .flag-risk  { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-bd); }
+  .flag-note  { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-bd); }
+  .flag-gate  { background: var(--purple-bg); color: var(--purple); border: 1px solid var(--purple-bd); }
+
+  /* ── ULTIMATE DR SECTION ── */
+  .ultimate-dr {
+    margin: 0;
+    padding: 18px 40px 20px;
+    background: #fdf8f0;
+    border-top: 2px solid var(--amber-bd);
+  }
+  .ultimate-dr-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .ultimate-dr-badge {
+    background: var(--amber);
+    color: white;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 3px;
+  }
+  .ultimate-dr-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--amber);
+  }
+  .ultimate-dr-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+  }
+  .dr-block-title {
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin-bottom: 6px;
+  }
+  .dr-block-text {
+    font-size: 11.5px;
+    color: #5a3a00;
+    line-height: 1.65;
+  }
+  .dr-block-text li {
+    margin-left: 14px;
+    margin-bottom: 2px;
+  }
+
+  /* ── ASSUMPTIONS ── */
+  .assumptions {
+    padding: 16px 40px 20px;
+    border-top: 1px solid var(--steel);
+    background: var(--white);
+  }
+  .assumptions-title {
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--slate);
+    margin-bottom: 10px;
+  }
+  .assumptions-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  .assumption-item {
+    padding: 10px 12px;
+    border-radius: 5px;
+    border: 1px solid var(--steel);
+    background: var(--fog);
+  }
+  .assumption-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .assumption-text {
+    font-size: 11px;
+    color: var(--slate);
+    line-height: 1.5;
+  }
+
+  /* ── FOOTER ── */
+  .footer {
+    padding: 12px 40px;
+    background: var(--navy);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 10px;
+    color: rgba(255,255,255,0.35);
+  }
+
+  @media print {
+    body { background: white; }
+    .page { box-shadow: none; max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-top">
+      <div>
+        <div class="eyebrow">CIB Digital Enablement &nbsp;·&nbsp; Architecture</div>
+        <h1>CIB Unified Ingress: Resilience Posture</h1>
+      </div>
+      <div class="header-meta">
+        <div>Classification: Internal</div>
+        <div>Status: Draft for Review</div>
+        <div>Owner: Head of Architecture</div>
+      </div>
+    </div>
+    <div class="header-summary">
+      The platform is designed so that <strong>every failure mode below the CDN vendor level is handled automatically with no user impact.</strong>
+      Pod failures, regional failures, session continuity, and revocation propagation all recover without human intervention.
+      CDN vendor failure is the sole case requiring manual action — a deliberate trade-off accepted because vendor-level outages are rare,
+      short-lived, and the operational cost of active/active across two CDN providers outweighs the marginal availability gain.
+      An ultimate DR path exists to bypass CDN layers entirely and route directly to the perimeter in a catastrophic scenario.
+    </div>
+  </div>
+
+  <!-- POSTURE STRIP -->
+  <div class="posture-strip">
+    <div class="posture-cell">
+      <div class="posture-label">DNS nameservers</div>
+      <div class="posture-value">Split — active/active</div>
+      <div class="posture-sub">Self-hosted + Cloudflare NS</div>
+    </div>
+    <div class="posture-cell">
+      <div class="posture-label">Primary model</div>
+      <div class="posture-value">Automatic below L2</div>
+      <div class="posture-sub">Regional failover via GTM</div>
+    </div>
+    <div class="posture-cell">
+      <div class="posture-label">CDN / WAF</div>
+      <div class="posture-value">Akamai primary</div>
+      <div class="posture-sub">Cloudflare warm standby</div>
+    </div>
+    <div class="posture-cell">
+      <div class="posture-label">Session continuity</div>
+      <div class="posture-value">Active / active</div>
+      <div class="posture-sub">No re-auth on regional failover</div>
+    </div>
+    <div class="posture-cell">
+      <div class="posture-label">Ultimate DR</div>
+      <div class="posture-value">Direct to perimeter</div>
+      <div class="posture-sub">Bypass CDN entirely</div>
+    </div>
+  </div>
+
+  <!-- MAIN TABLE -->
+  <div class="section-title">Layer-by-Layer Resilience</div>
+  <div class="content">
+    <table class="layer-table">
+      <thead>
+        <tr>
+          <th style="width:72px">Layer</th>
+          <th style="width:170px">Components</th>
+          <th style="width:130px">Recovery objective</th>
+          <th style="width:210px">Mechanism</th>
+          <th>Rationale and notes</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <!-- DNS -->
+        <tr class="layer-row">
+          <td class="layer-id">
+            <div class="layer-badge" style="background:#2a6a4a">DNS</div>
+            <div class="layer-badge-sub">Authoritative<br>Nameservers</div>
+          </td>
+          <td>
+            <div class="component-name">Self-hosted Nameservers</div>
+            <div class="component-desc">JPM-operated authoritative NS. Full organisational control, on-premises DNS infrastructure.</div>
+            <br>
+            <div class="component-name" style="color:#8a5200">Cloudflare Nameservers</div>
+            <div class="component-desc">Cloud-hosted secondary NS. Serves the same zone data. Active in parallel — not a standby.</div>
+          </td>
+          <td>
+            <span class="recovery-badge badge-instant">Instant</span>
+            <div class="recovery-note">Both NS sets are active simultaneously. Resolvers query whichever responds first. Failure of one set is transparent — the other continues serving all DNS queries without any failover action required.</div>
+          </td>
+          <td>
+            <div class="mechanism-item">NS records for CIB ingress domains delegate to both self-hosted and Cloudflare nameservers</div>
+            <div class="mechanism-item">Resolvers receive both NS sets and will use whichever responds — no single point of failure at the DNS layer</div>
+            <div class="mechanism-item">Zone data must remain in sync across both sets at all times</div>
+            <div class="mechanism-item">GTM records (short TTL, health-check driven) served through whichever NS set the resolver contacts</div>
+          </td>
+          <td>
+            <div class="rationale-text">
+              Splitting nameservers across self-hosted and Cloudflare eliminates the DNS layer as a single point of failure. A full DNS outage would require both the JPM on-premises DNS infrastructure and Cloudflare's global DNS network to fail simultaneously — an extremely unlikely scenario.
+              <br><br>
+              This is distinct from the L2 CDN/WAF layer where Cloudflare is a warm standby. At the DNS layer, Cloudflare nameservers are active all the time. Both NS sets serve live traffic. The split is about resilience, not cost or routing preference.
+              <br><br>
+              <span class="flag flag-note">Note</span> Zone synchronisation between self-hosted and Cloudflare nameservers is a critical operational dependency. A lag in propagating GTM record updates or DR DNS changes across both NS sets could cause inconsistent resolution during an incident. Sync latency should be monitored and bounded.
+            </div>
+          </td>
+        </tr>
+
+        <!-- L1 -->
+        <tr class="layer-row">
+          <td class="layer-id">
+            <div class="layer-badge" style="background:#5a7aaa">L1</div>
+            <div class="layer-badge-sub">Global DNS<br>Routing</div>
+          </td>
+          <td>
+            <div class="component-name">Akamai GTM</div>
+            <div class="component-desc">GeoDNS steering, composite health checks, regional failover steering</div>
+          </td>
+          <td>
+            <span class="recovery-badge badge-auto">~30 seconds</span>
+            <div class="recovery-note">DNS TTL-bound. GTM propagates regional failover within one TTL window once health threshold is breached.</div>
+          </td>
+          <td>
+            <div class="mechanism-item">Composite health check evaluates gateway capacity and auth pipeline responsiveness per region</div>
+            <div class="mechanism-item">Threshold breach triggers automatic DNS steering to surviving region(s)</div>
+            <div class="mechanism-item">Hysteresis prevents flapping on recovery</div>
+          </td>
+          <td>
+            <div class="rationale-text">
+              GTM is the automatic regional failover control point. The composite health check must define a meaningful region-unhealthy threshold — not a simple ping — to avoid false failovers. Hysteresis configuration is critical: a region that recovers and immediately takes traffic back risks flapping.
+              <br><br>
+              <span class="flag flag-note">Note</span> Regional health check design must be agreed before GTM configuration begins. This is a functional decision, not a tuning exercise.
+            </div>
+          </td>
+        </tr>
+
+        <!-- L2 -->
+        <tr class="layer-row">
+          <td class="layer-id">
+            <div class="layer-badge" style="background:#aa6060">L2</div>
+            <div class="layer-badge-sub">Edge Security<br>CDN</div>
+          </td>
+          <td>
+            <div class="component-name">Akamai Ion CDN + Kona WAF</div>
+            <div class="component-desc">Primary CDN, WAF, DDoS, TLS termination</div>
+            <br>
+            <div class="component-name" style="color:#8a5200">Cloudflare Edge (DR)</div>
+            <div class="component-desc">Warm standby, activated on Akamai vendor failure</div>
+          </td>
+          <td>
+            <span class="recovery-badge badge-instant">Instant</span>
+            <div class="recovery-note" style="margin-bottom:8px">Pod/node failure within Akamai platform — self-healing, no action required.</div>
+            <span class="recovery-badge badge-minutes">&lt; 30 minutes</span>
+            <div class="recovery-note">Akamai vendor outage — manual activation of Cloudflare DR via runbook.</div>
+          </td>
+          <td>
+            <div class="mechanism-item">Akamai internal redundancy handles instance-level failures automatically</div>
+            <div class="mechanism-item">Vendor outage: operator activates Cloudflare via DNS cutover runbook</div>
+            <div class="mechanism-item">Cloudflare config maintained and tested quarterly to ensure readiness</div>
+          </td>
+          <td>
+            <div class="rationale-text">
+              Active/active between Akamai and Cloudflare is not viable. WAF rule consistency is the critical problem: splitting traffic across two CDN/WAF vendors requires maintaining identical OWASP rulesets, custom CIB rules, bot management policies, and TLS configuration on both platforms simultaneously. In practice these drift. The security posture becomes the weaker of the two at all times. For a regulated financial institution this is not acceptable.
+              <br><br>
+              Vendor-level CDN outages are rare and brief — the June 2021 Akamai outage lasted approximately one hour. Manual recovery within that window is operationally acceptable.
+              <br><br>
+              <span class="flag flag-note">Note</span> Cloudflare config must be exercised quarterly via DR test. An untested DR path is not a DR path.
+            </div>
+          </td>
+        </tr>
+
+        <!-- L3 -->
+        <tr class="layer-row">
+          <td class="layer-id">
+            <div class="layer-badge" style="background:#4a8a62">L3</div>
+            <div class="layer-badge-sub">Network<br>Perimeter</div>
+          </td>
+          <td>
+            <div class="component-name">PSaaS+ (GKP path)</div>
+            <div class="component-desc">TLS re-origination, perimeter routing</div>
+            <br>
+            <div class="component-name">CTC Edge (AWS path)</div>
+            <div class="component-desc">TLS re-origination, perimeter routing</div>
+            <br>
+            <div class="component-desc" style="margin-top:4px">NA · EMEA · APAC deployed in all regions</div>
+          </td>
+          <td>
+            <span class="recovery-badge badge-instant">Subsecond</span>
+            <div class="recovery-note">GTM steers traffic away from an unhealthy region before requests arrive at the perimeter. Perimeter instances in surviving regions absorb traffic transparently.</div>
+          </td>
+          <td>
+            <div class="mechanism-item">Deployed across all three regions (NA, EMEA, APAC)</div>
+            <div class="mechanism-item">GTM composite health check triggers upstream; perimeter is a passive recipient of steering decisions</div>
+            <div class="mechanism-item">N+1 regional capacity: each region sized to absorb traffic from at least one failed peer region</div>
+          </td>
+          <td>
+            <div class="rationale-text">
+              Resilience at L3 is a function of GTM configuration and regional capacity sizing, not L3-specific failover logic. The perimeter does not need to detect its own failure — GTM does that from outside. Regional capacity must be validated under N+1 load conditions in P7.
+            </div>
+          </td>
+        </tr>
+
+        <!-- L4 -->
+        <tr class="layer-row">
+          <td class="layer-id">
+            <div class="layer-badge" style="background:#7a72c8">L4</div>
+            <div class="layer-badge-sub">Application<br>Gateway</div>
+          </td>
+          <td>
+            <div class="component-name">Envoy Web Gateway</div>
+            <div class="component-desc">Browser and workforce flows, DPoP enforcement, auth filter chain</div>
+            <br>
+            <div class="component-name">Kong API Gateway</div>
+            <div class="component-desc">Programmatic API clients, consumer identity, rate limiting</div>
+          </td>
+          <td>
+            <span class="recovery-badge badge-instant">Subsecond</span>
+            <div class="recovery-note">Pod failures replaced by Kubernetes. HPA scales capacity under load. Auth sidecar failure is scoped to the affected pod only — other pods continue serving.</div>
+          </td>
+          <td>
+            <div class="mechanism-item">Multiple pod replicas per region behind regional load balancer</div>
+            <div class="mechanism-item">HPA autoscaling adjusts replica count based on CPU and request rate</div>
+            <div class="mechanism-item">PodDisruptionBudgets ensure minimum availability during maintenance and upgrades</div>
+            <div class="mechanism-item">OPA PDP, Session Validator, and OTEL Collector run as sidecars — failure is pod-scoped, not platform-wide</div>
+          </td>
+          <td>
+            <div class="rationale-text">
+              Sidecar isolation is the key design decision at L4. Running auth components as sidecars rather than shared services means a failing OPA instance or Session Validator affects only its own pod. The rest of the gateway fleet continues unaffected. This is fundamentally more resilient than a shared auth service with a single failure domain.
+            </div>
+          </td>
+        </tr>
+
+        <!-- Session -->
+        <tr class="layer-row">
+          <td class="layer-id">
+            <div class="layer-badge" style="background:#534AB7">SM</div>
+            <div class="layer-badge-sub">Session<br>Layer</div>
+          </td>
+          <td>
+            <div class="component-name">Session Manager</div>
+            <div class="component-desc">Active/active multi-region. Session state replicated via Kafka session-events topic. Revocation via CAEP events.</div>
+          </td>
+          <td>
+            <span class="recovery-badge badge-instant">Zero session loss</span>
+            <div class="recovery-note">On regional failover, a user's session is valid in the receiving region immediately. No re-authentication required.</div>
+            <br>
+            <span class="recovery-badge badge-instant">&lt; 1 second</span>
+            <div class="recovery-note">Revocation propagation SLA across all regions via CAEP event and Kafka consumer.</div>
+          </td>
+          <td>
+            <div class="mechanism-item">Session state replicated across all regions via Kafka before any request depends on it</div>
+            <div class="mechanism-item">No cross-region dependency in the request path — each region is self-contained</div>
+            <div class="mechanism-item">CAEP events propagate revocations via Kafka revocation-events topic to all gateway instances</div>
+            <div class="mechanism-item">Revoke cache per pod checked on every authenticated request</div>
+          </td>
+          <td>
+            <div class="rationale-text">
+              This is the layer that makes regional failover invisible to users. Without active/active session state, a regional failover forces re-authentication for every active user — a significant and visible disruption in a trading context. The Kafka replication model ensures session state is already present in the target region before failover occurs.
+            </div>
+          </td>
+        </tr>
+
+        <!-- Auth -->
+        <tr class="layer-row">
+          <td class="layer-id">
+            <div class="layer-badge" style="background:#1D9E75">Auth</div>
+            <div class="layer-badge-sub">Identity<br>Layer</div>
+          </td>
+          <td>
+            <div class="component-name">Sentry (IdP broker)</div>
+            <div class="component-desc">OAuth 2.0 / PKCE flows, OIDC discovery</div>
+            <br>
+            <div class="component-name">AuthE (Identity Provider)</div>
+            <div class="component-desc">Token issuance, JWKS publication</div>
+          </td>
+          <td>
+            <span class="recovery-badge badge-tbc">Pending topology</span>
+            <div class="recovery-note">If Sentry and AuthE are deployed regionally: automatic, auth is self-contained per region.<br>If centralised: regional failover requires cross-region auth calls — this must be resolved before platform go-live.</div>
+          </td>
+          <td>
+            <div class="mechanism-item">JWKS cached at gateway with 60-second background refresh — auth continues serving during short IdP disruptions</div>
+            <div class="mechanism-item">Session JWTs are already validated locally; established sessions do not depend on IdP availability</div>
+            <div class="mechanism-item">New login attempts require IdP reachability</div>
+          </td>
+          <td>
+            <div class="rationale-text">
+              <span class="flag flag-gate">Gate</span> The regional deployment topology of Sentry and AuthE must be confirmed before Phase 3 begins. This is the one open question in the resilience model. If either service is centralised, architectural changes are required and the auth team's estimates need to be revisited. Established sessions are resilient regardless — only new logins are affected by IdP availability.
+            </div>
+          </td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ULTIMATE DR -->
+  <div class="ultimate-dr">
+    <div class="ultimate-dr-header">
+      <span class="ultimate-dr-badge">Ultimate DR</span>
+      <span class="ultimate-dr-title">Direct Perimeter Route — CDN Bypass</span>
+    </div>
+    <div class="ultimate-dr-body">
+      <div>
+        <div class="dr-block-title">What it is</div>
+        <div class="dr-block-text">
+          A last-resort path that routes traffic directly to PSaaS+ (GKP path) or the AWS WAF layer, bypassing both Akamai and Cloudflare entirely. Used only when both CDN/WAF vendors are simultaneously unavailable, or when a security incident requires emergency removal of all CDN intermediaries.
+          <br><br>
+          This path exists because the perimeter (PSaaS+ and AWS WAF) provides a base level of protection and routing capability independent of any CDN vendor. It is not a normal operating mode.
+        </div>
+      </div>
+      <div>
+        <div class="dr-block-title">What is lost</div>
+        <div class="dr-block-text">
+          <ul>
+            <li>CDN caching and acceleration</li>
+            <li>Edge TLS termination at Akamai/Cloudflare PoPs</li>
+            <li>Akamai Kona WAF and Cloudflare WAF protection</li>
+            <li>DDoS mitigation at CDN edge</li>
+            <li>Bot management and credential stuffing protection</li>
+            <li>GTM GeoDNS steering (manual DNS required)</li>
+          </ul>
+          <br>The platform remains functional for authenticated users but is exposed to a broader threat surface and higher origin load.
+        </div>
+      </div>
+      <div>
+        <div class="dr-block-title">Activation and recovery objective</div>
+        <div class="dr-block-text">
+          Activation requires a manual DNS change to point CIB hostnames directly at PSaaS+/AWS WAF endpoints, coordinated security sign-off, and agreement that the risk of operating without CDN WAF protection is acceptable for the outage duration.
+          <br><br>
+          <strong>RTO: hours.</strong> This is not a fast-activation path. It exists to ensure continuity is possible in a catastrophic scenario — not to provide rapid recovery.
+          <br><br>
+          Runbook, pre-approved DNS change records, and security sign-off process must be documented and tested before go-live.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ASSUMPTIONS AND GATES -->
+  <div class="assumptions">
+    <div class="assumptions-title">Open items and gates</div>
+    <div class="assumptions-grid">
+      <div class="assumption-item" style="border-color:#f0b8b8;background:#fdf0f0">
+        <div class="assumption-label" style="color:#8B1A1A">Gate — Phase 2</div>
+        <div class="assumption-text">Sentry and AuthE regional deployment topology must be confirmed before Phase 3 begins. If either is centralised, auth resilience on regional failover is not guaranteed.</div>
+      </div>
+      <div class="assumption-item">
+        <div class="assumption-label" style="color:#1a5a8a">Ongoing</div>
+        <div class="assumption-text">Zone synchronisation between self-hosted and Cloudflare nameservers must be monitored. Sync lag during a DNS change or DR activation could cause inconsistent resolution across resolvers.</div>
+      </div>
+      <div class="assumption-item" style="border-color:#f5c880;background:#fff3e0">
+        <div class="assumption-label" style="color:#7a4400">Gate — Phase 7</div>
+        <div class="assumption-text">N+1 regional capacity must be validated under load before go-live. Each region must sustain SLOs while absorbing the traffic of one failed peer region.</div>
+      </div>
+      <div class="assumption-item" style="border-color:#f5c880;background:#fff3e0">
+        <div class="assumption-label" style="color:#7a4400">Gate — Phase 7</div>
+        <div class="assumption-text">Full regional failover simulation required in DR testing. GTM composite health check trigger, session continuity, and SLO retention under N+1 load all validated end-to-end.</div>
+      </div>
+      <div class="assumption-item">
+        <div class="assumption-label" style="color:#1a5a8a">Ongoing</div>
+        <div class="assumption-text">Cloudflare DR configuration tested quarterly. An untested warm standby is not a reliable recovery option.</div>
+      </div>
+      <div class="assumption-item">
+        <div class="assumption-label" style="color:#1a5a8a">Phase 1</div>
+        <div class="assumption-text">GTM composite health check threshold definition is a functional design decision to be made during Phase 1, not a post-launch tuning exercise.</div>
+      </div>
+      <div class="assumption-item">
+        <div class="assumption-label" style="color:#1a5a8a">Phase 7</div>
+        <div class="assumption-text">Ultimate DR runbook, pre-approved DNS records, and security sign-off process must be documented and exercised before go-live.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <span>CIB Digital Enablement &nbsp;·&nbsp; Architecture</span>
+    <span>CIB Unified Ingress &nbsp;·&nbsp; Resilience Posture &nbsp;·&nbsp; Draft for Review</span>
+  </div>
+
+</div>
+</body>
+</html>
