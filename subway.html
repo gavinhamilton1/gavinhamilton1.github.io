@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CIB Unified Ingress — Delivery Map</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#e8edf4;min-height:100vh;padding:28px 20px 56px;font-family:'DM Sans',sans-serif;}
+.outer{background:#f5f8fc;border-radius:16px;overflow:hidden;
+  box-shadow:0 4px 32px rgba(15,35,80,0.12),0 1px 0 rgba(255,255,255,0.9);}
+svg{display:block;width:100%;height:auto;}
+</style>
+</head>
+<body>
+<div style="display:flex;align-items:flex-start;gap:16px;width:100%;box-sizing:border-box;">
+
+  <div class="outer" style="flex:0 0 70%;min-width:0;">
+    <svg id="map" viewBox="0 0 1680 1320" xmlns="http://www.w3.org/2000/svg"></svg>
+    <script>
+const W=1680,H=1320;
+const ML=296,MR=56,MT=158,MB=90;
+const CW=1680;
+const WEEKS=34;
+const PPW=(CW-ML-MR)/WEEKS;
+function wx(w){return ML+w*PPW;}
+
+// ── Timeline (weeks from Apr 28 2026) ─────────────────────────────────────
+const T={
+  start:0, foundation:5.0,
+  mgmtAPI:9.0, consoleUI:14.5, drift:17.0, p2done:18.0,
+  otel:20.0, opsDone:23.0,
+  gtm:7.0, wafcode:12.0, cdnDone:17.0,
+  perimeter:8.0, vanEntry:11.0, vanDone:14.5,
+  pods:7.0, kongRecon:13.0, envoyADS:16.0, gwDone:18.0,
+  hsmReady:6.5, oauthDPoP:8.0, authDone:14.0, smCore:9.0,
+  caep:17.1, authzDone:22.0,
+  opaBundle:8.0, opaCoarse:14.0, ctxProp:19.5, polDone:21.0,
+  p6start:24.0, pentest:24.0, siemIR:25.5, loadtest:27.0,
+  drValidated:28.5, traffic:30.0, golive:33.0,
+};
+
+// ── Y positions ───────────────────────────────────────────────────────────
+const YI=220, YC=308, YE=396, SPINE=852;
+const YN=484, YG=572, YA=660, YP=748;
+const LOB_H=944, LOB_Y1=1006, LOB_Y2=1068, LOB_Y3=1130, LOB_Y4=1192;
+
+// ── Colours ───────────────────────────────────────────────────────────────
+const C={
+  infra:   '#37607a',
+  ctrl:    '#1e5aab',
+  edge:    '#aa6060',
+  netvan:  '#4a8a62',
+  apiGW:   '#7a72c8',
+  idAuth:  '#8b3fa8',
+  authz:   '#1a7a62',
+  secur:   '#8b5a1a',  // NEW — security & resilience foundations (bronze)
+  spine:   '#0f2340',
+  release: '#8B1A1A',
+  gold:    '#c8930a',
+  grid:    '#dae2ef',
+  bg:      '#f5f8fc',
+  panel:   '#edf1f7',
+  band:    'rgba(15,35,80,0.025)',
+};
+
+const TRACKS=[
+  {k:'infra', y:YI, c:C.infra, lbl:'Infrastructure & Environments', sub:'P0 · First'},
+  {k:'ctrl',  y:YC, c:C.ctrl,  lbl:'Control Plane & Ops',           sub:'P2+P5 · Drives data plane'},
+  {k:'edge',  y:YE, c:C.edge,  lbl:'Edge & CDN',                    sub:'P1 · L0–L2'},
+  {k:'netvan',y:YN, c:C.netvan,lbl:'Network & VAN Ingress',         sub:'P1 · L3'},
+  {k:'apiGW', y:YG, c:C.apiGW, lbl:'API Gateway & Data Plane',       sub:'P1+P2 · L4'},
+  {k:'idAuth',y:YA, c:C.idAuth,lbl:'Identity & Auth',               sub:'P3 · Auth Pipeline'},
+  {k:'authz', y:YP, c:C.authz, lbl:'Authorization & Policy',        sub:'P4 · Policy Engine'},
+];
+
+// ── SVG helpers ───────────────────────────────────────────────────────────
+const svg=document.getElementById('map');
+const NS='http://www.w3.org/2000/svg';
+function el(tag,a={},p=svg){
+  const e=document.createElementNS(NS,tag);
+  Object.entries(a).forEach(([k,v])=>e.setAttribute(k,v));
+  p.appendChild(e);return e;
+}
+function g(id,p=svg){return el('g',{id},p);}
+const gBg=g('bg'),gLines=g('lines'),gSpine=g('spine'),gTop=g('top'),gPanel=g('panel');
+
+function R(x,y,w,h,fill,rx=0,op=1,sk='none',sw=0,p=gBg){
+  el('rect',{x,y,width:w,height:h,fill,rx,opacity:op,stroke:sk,'stroke-width':sw},p);}
+function C2(cx,cy,r,fill,sk='none',sw=0,op=1,p=gTop){
+  el('circle',{cx,cy,r,fill,stroke:sk,'stroke-width':sw,opacity:op},p);}
+function P(d,sk,sw=9,da='',lc='round',op=1,p=gLines){
+  el('path',{d,stroke:sk,'stroke-width':sw,fill:'none','stroke-linecap':lc,
+    'stroke-linejoin':'round',...(da?{'stroke-dasharray':da}:{}),opacity:op},p);}
+function L(x1,y1,x2,y2,sk,sw=1,da='',op=1,p=gBg){
+  el('line',{x1,y1,x2,y2,stroke:sk,'stroke-width':sw,
+    ...(da?{'stroke-dasharray':da}:{}),opacity:op},p);}
+function poly(pts,fill,sk='none',sw=0,p=gTop){
+  el('polygon',{points:pts,fill,stroke:sk,'stroke-width':sw},p);}
+function T2(x,y,t,o={},p=gTop){
+  const d={'text-anchor':'middle',fill:'#1a2a4a',
+    'font-family':'DM Sans,sans-serif','font-size':15,'font-weight':400};
+  const te=el('text',{...d,...o,x,y},p);te.textContent=t;return te;}
+
+// ── Background ────────────────────────────────────────────────────────────
+R(0,0,W,H,C.bg,0,1,'none',0,gBg);
+R(0,SPINE-34,W,68,'rgba(15,35,80,0.028)',0,1,'none',0,gBg);
+R(0,SPINE-13,W,26,'rgba(15,35,80,0.045)',0,1,'none',0,gBg);
+[YI,YC,YE,YN,YG,YA,YP].forEach(y=>
+  R(ML-24,y-22,CW-ML,44,C.band,4,1,'none',0,gBg));
+R(0,LOB_H-10,CW,H-LOB_H+10,'rgba(15,35,80,0.012)',0,1,'none',0,gBg);
+R(ML-24,YI-26,CW-ML,52,'rgba(55,96,122,0.04)',4,1,'none',0,gBg);
+
+// ── Grid & title ──────────────────────────────────────────────────────────
+[['APR',0],['MAY',0.57],['JUN',4.4],['JUL',8.9],['AUG',13.3],
+ ['SEP',17.8],['OCT',22.3],['NOV',26.4],['DEC',30.9]
+].forEach(([lbl,w])=>{
+  const x=wx(w);
+  L(x,MT-32,x,H-MB+18,C.grid,1,'',1,gBg);
+  T2(x,MT-42,lbl,{'font-size':13.5,'font-weight':500,
+    fill:'rgba(15,35,80,0.3)','letter-spacing':'0.1em'},gTop);
+});
+T2(wx(0),MT-58,'2026',{'font-family':'Syne,sans-serif','font-size':12,
+  'font-weight':700,'text-anchor':'start',fill:'rgba(15,35,80,0.2)',
+  'letter-spacing':'0.12em'},gTop);
+
+T2((CW)/2,MT-84,'CIB UNIFIED INGRESS',{'font-family':'Syne,sans-serif',
+  'font-size':22,'font-weight':800,fill:'#0f2340','letter-spacing':'0.2em'},gTop);
+T2((CW)/2,MT-66,'Delivery Map  \u00b7  Execution Sequence View  \u00b7  Apr \u2013 Dec 2026',
+  {'font-size':13.5,'font-weight':300,fill:'rgba(15,35,80,0.4)'},gTop);
+L(ML,MT-58,CW-MR,MT-58,'rgba(15,35,80,0.08)',1,'',1,gBg);
+
+// ── Left labels ───────────────────────────────────────────────────────────
+L(ML-14,MT-58,ML-14,H-MB+18,'rgba(15,35,80,0.07)',1,'',1,gBg);
+L(ML,SPINE-50,wx(T.golive)+20,SPINE-50,'rgba(15,35,80,0.06)',1,'3,3',1,gBg);
+L(ML,SPINE+50,wx(T.golive)+20,SPINE+50,'rgba(15,35,80,0.06)',1,'3,3',1,gBg);
+
+TRACKS.forEach(({y,c:col},i)=>{
+  R(ML-206,y-11,20,20,col,3,1,'none',0,gTop);
+  T2(ML-196,y+3,String(i+1),{'font-size':12.5,'font-weight':700,fill:'white'},gTop);
+});
+
+TRACKS.forEach(({k,y,c,lbl,sub})=>{
+  const twoLine={
+    infra:  ['Infrastructure &','Environments'],
+    netvan: ['Network & VAN','Ingress'],
+    apiGW:  ['API Gateway &','Data Plane'],
+  };
+  if(twoLine[k]){
+    const wt=500;
+    const fc=k==='infra'?c:'rgba(15,35,80,0.65)';
+    T2(ML-22,y-3,twoLine[k][0],{'text-anchor':'end','font-size':15,
+      'font-weight':wt,'font-family':'DM Sans,sans-serif',fill:fc},gTop);
+    T2(ML-22,y+11,twoLine[k][1],{'text-anchor':'end','font-size':15,
+      'font-weight':wt,'font-family':'DM Sans,sans-serif',fill:fc},gTop);
+  } else {
+    T2(ML-22,y+4,lbl,{'text-anchor':'end','font-size':15,'font-weight':500,
+      'font-family':'DM Sans,sans-serif',fill:'rgba(15,35,80,0.65)'},gTop);
+  }
+});
+T2(ML-22,SPINE+5,'Core Initiative',{'text-anchor':'end','font-size':15,
+  'font-weight':700,'font-family':'Syne,sans-serif',fill:C.spine,
+  'letter-spacing':'0.04em'},gTop);
+
+// LOB header
+L(ML-24,LOB_H-16,CW-MR,LOB_H-16,'rgba(15,35,80,0.08)',1,'4,4',1,gBg);
+R(ML-24,LOB_H-36,240,24,C.spine,3,0.9,'none',0,gTop);
+T2(ML+93,LOB_H-20,'LOB ADOPTION TRACKS',{'text-anchor':'start','font-size':12.5,
+  'font-weight':700,fill:'white','letter-spacing':'0.12em',
+  'font-family':'Syne,sans-serif'},gTop);
+const LOBS=[
+  {y:LOB_Y1, lob:'JPMM',          loc:'Markets',  gw:'Envoy', col:'#7a72c8', target:'Q1 2027',          note:'Decom Janus + Apache'},
+  {y:LOB_Y2, lob:'JPMDB \u00b7 JPMA', loc:'Payments', gw:'Envoy', col:'#7a72c8', target:'Q1 2027',          note:'Envoy convergence'},
+  {y:LOB_Y3, lob:'PDP',           loc:'Payments', gw:'Kong',  col:'#9488cc', target:'Q1 2027',          note:'PayEdge \u2192 Kong'},
+  {y:LOB_Y4, lob:'HRL',           loc:'Payments', gw:'WGP',   col:'#a566c4', target:'Q2\u201927 \u00b7 Q1\u201928', note:'China + HK \u00b7 BFF + SXP'},
+];
+LOBS.forEach(({y,lob,loc,gw,col})=>{
+  R(ML-152,y-8,13,13,col,3,1,'none',0,gTop);
+  T2(ML-22,y-2,lob,{'text-anchor':'end','font-size':13,'font-weight':700,
+    fill:'rgba(15,35,80,0.65)','font-family':'DM Sans,sans-serif'},gTop);
+  T2(ML-22,y+13,gw+' \u00b7 '+loc,{'text-anchor':'end','font-size':10,'font-weight':500,
+    fill:'rgba(15,35,80,0.4)','font-family':'DM Mono,monospace'},gTop);
+});
+
+// ── TRACK LINES ───────────────────────────────────────────────────────────
+const FX=wx(T.foundation);
+
+P(`M ${wx(T.start)},${YI} H ${FX}`,C.infra,9,'','round',1,gLines);
+P(`M ${FX},${YI} C ${FX},${YI+40} ${FX},${SPINE-40} ${FX},${SPINE}`,
+  C.infra,2,'','round',0.35,gLines);
+
+function capLine(fy,fc,endW){
+  const ex=wx(endW);
+  P(`M ${FX},${SPINE} C ${FX+22},${SPINE} ${FX+46},${fy} ${FX+54},${fy}`,
+    fc,2,'','round',0.4,gLines);
+  P(`M ${FX+54},${fy} H ${ex}`,fc,9,'','round',1.0,gLines);
+  const mid=(fy+SPINE)/2;
+  P(`M ${ex},${fy} C ${ex},${mid} ${ex},${mid} ${ex},${SPINE}`,
+    fc,9,'','round',0.72,gLines);
+}
+
+capLine(YC,C.ctrl,  T.opsDone);
+capLine(YE,C.edge,  T.cdnDone);
+capLine(YN,C.netvan,T.vanDone);
+capLine(YG,C.apiGW, T.gwDone);
+capLine(YA,C.idAuth,T.authzDone);
+capLine(YP,C.authz, T.polDone);
+
+// LOB adoption tracks
+LOBS.forEach(({y,col,target,note},i)=>{
+  R(ML-24,y-15,CW-ML,30,i%2===0?'rgba(15,35,80,0.018)':'rgba(15,35,80,0.008)',4,1,'none',0,gBg);
+  P(`M ${wx(24.5)},${y} H ${wx(28.5)}`, col, 2.5, '4,4', 'round', 0.5, gLines);
+  P(`M ${wx(28.5)},${y} H ${wx(33)}`, col, 6, '', 'round', 0.8, gLines);
+  P(`M ${wx(33)},${y} H ${wx(33.5)}`, col, 8, '', 'round', 1, gLines);
+  P(`M ${wx(33.5)},${y} L ${wx(33.8)},${y-5} L ${wx(33.8)},${y+5} Z`, col, 0, '', 'round', 1, gLines);
+});
+
+LOBS.forEach(({y,col})=>{
+  C2(wx(25),y,6,col,'white',2,0.6);
+  C2(wx(29.5),y,7,col,'white',2.5,0.85);
+  C2(wx(32.5),y,11,'white',col,3);
+  C2(wx(32.5),y,5,col);
+});
+
+LOBS.forEach(({y,target,note,col})=>{
+  T2(wx(33.8)+14,y-2,target,{'text-anchor':'start','font-size':10.5,
+    'font-weight':700,fill:col,'font-family':'DM Mono,monospace',
+    'letter-spacing':'0.06em'},gTop);
+  T2(wx(33.8)+14,y+11,note,{'text-anchor':'start','font-size':8.5,
+    'font-weight':500,fill:'rgba(15,35,80,0.45)',
+    'font-family':'DM Sans,sans-serif'},gTop);
+});
+
+const LOB_PHASE_Y = LOB_H + 4;
+T2(wx(25),LOB_PHASE_Y-6,'PATTERN',{'text-anchor':'middle','font-size':9,
+  'font-weight':700,fill:'rgba(15,35,80,0.35)','letter-spacing':'0.1em',
+  'font-family':'Syne,sans-serif'},gTop);
+T2(wx(29.5),LOB_PHASE_Y-6,'ROUTES',{'text-anchor':'middle','font-size':9,
+  'font-weight':700,fill:'rgba(15,35,80,0.35)','letter-spacing':'0.1em',
+  'font-family':'Syne,sans-serif'},gTop);
+T2(wx(32.5),LOB_PHASE_Y-6,'PILOT',{'text-anchor':'middle','font-size':9,
+  'font-weight':700,fill:'rgba(15,35,80,0.35)','letter-spacing':'0.1em',
+  'font-family':'Syne,sans-serif'},gTop);
+T2(wx(33.8)+14,LOB_PHASE_Y-6,'CUTOVER',{'text-anchor':'start','font-size':9,
+  'font-weight':700,fill:'rgba(15,35,80,0.35)','letter-spacing':'0.1em',
+  'font-family':'Syne,sans-serif'},gTop);
+
+// ── SPINE ─────────────────────────────────────────────────────────────────
+P(`M ${wx(T.start)},${SPINE} H ${wx(T.p6start)}`,C.spine,16,'','round',1,gSpine);
+P(`M ${wx(T.p6start)},${SPINE} H ${wx(T.golive)-22}`,C.release,16,'','round',1,gSpine);
+P(`M ${wx(T.start)},${SPINE} H ${wx(T.p6start)}`,C.bg,5,'','round',1,gSpine);
+P(`M ${wx(T.p6start)},${SPINE} H ${wx(T.golive)-22}`,C.bg,5,'','round',1,gSpine);
+
+function station(x,y,col,type){
+  if(type==='interchange'){C2(x,y,13,'white',col,3.5);C2(x,y,5.5,col);}
+  else{C2(x,y,7.5,col,'white',2.5);}
+}
+
+function spineGate(w,lns,above,date){
+  const x=wx(w),d=12;
+  C2(x,SPINE,16,'rgba(15,35,80,0.04)');
+  poly(`${x},${SPINE-d} ${x+d},${SPINE} ${x},${SPINE+d} ${x-d},${SPINE}`,'white',C.spine,3);
+  poly(`${x},${SPINE-5.5} ${x+5.5},${SPINE} ${x},${SPINE+5.5} ${x-5.5},${SPINE}`,C.spine);
+  if(date)T2(x,SPINE+(above?36:-34),date,{'font-family':'DM Mono,monospace',
+    'font-size':13.5,'font-weight':500,fill:'rgba(15,35,80,0.35)','letter-spacing':'0.06em'});
+}
+
+spineGate(T.start,     ['Program','Start'],      true, 'APR 28');
+spineGate(T.foundation,['Foundation','Complete'], false,'JUN 2');
+spineGate(T.cdnDone,   ['Infrastructure','Ready'],true, 'AUG 25');
+spineGate(T.authzDone, ['Platform','Complete'],   false,'SEP 29');
+spineGate(T.p6start,   ['Hardening','Begins'],    true, 'OCT 12');
+
+station(wx(T.foundation),YI,C.infra,'interchange');
+
+station(wx(T.mgmtAPI),YC,C.ctrl,'reg');
+station(wx(T.consoleUI),YC,C.ctrl,'reg');
+station(wx(T.drift),YC,C.ctrl,'reg');
+station(wx(T.otel),YC,C.ctrl,'reg');
+station(wx(T.opsDone),YC,C.ctrl,'interchange');
+
+station(wx(T.gtm),YE,C.edge,'reg');
+station(wx(T.wafcode),YE,C.edge,'reg');
+station(wx(T.cdnDone),YE,C.edge,'interchange');
+
+station(wx(T.perimeter),YN,C.netvan,'reg');
+station(wx(T.vanEntry),YN,C.netvan,'reg');
+station(wx(T.vanDone),YN,C.netvan,'interchange');
+
+station(wx(T.pods),YG,C.apiGW,'reg');
+station(wx(T.kongRecon),YG,C.apiGW,'reg');
+station(wx(T.envoyADS),YG,C.apiGW,'reg');
+station(wx(T.gwDone),YG,C.apiGW,'interchange');
+
+// IDENTITY & AUTH — HSM station added as a critical gate before Session Manager
+{const bx=FX+58;
+ R(bx,YA-12,124,21,'rgba(139,63,168,0.07)',3,1,'rgba(139,63,168,0.2)',1,gTop);
+ T2(bx+58,YA+4,'2 parallel tracks',{'font-size':13.5,'font-weight':600,
+   fill:C.idAuth,'letter-spacing':'0.04em','text-anchor':'start'},gTop);}
+// HSM gate — signing keys must live in HSM before Session Manager can deploy
+station(wx(T.hsmReady),YA,C.idAuth,'reg');
+station(wx(T.oauthDPoP),YA,C.idAuth,'reg');
+station(wx(T.authDone),YA,C.idAuth,'reg');
+station(wx(T.smCore+3), YA,C.idAuth,['Session Mgr','+ Multi-Region'],'reg',false);
+station(wx(T.caep),YA,C.idAuth,'reg');
+station(wx(T.authzDone),YA,C.idAuth,'interchange');
+
+station(wx(T.opaBundle),YP,C.authz,'reg');
+station(wx(T.opaCoarse),YP,C.authz,'reg');
+station(wx(T.ctxProp),YP,C.authz,'reg');
+station(wx(T.polDone),YP,C.authz,'interchange');
+
+// P6 release stations — expanded to show GSIB hardening gates
+station(wx(T.pentest),SPINE,C.release,'reg');
+station(wx(T.siemIR),SPINE,C.release,'reg');      // NEW — SIEM + IR playbooks ready
+station(wx(T.loadtest),SPINE,C.release,'reg');
+station(wx(T.drValidated),SPINE,C.release,'reg'); // NEW — DR RTO/RPO validated
+station(wx(T.traffic),SPINE,C.release,'reg');
+
+{const gx=wx(T.golive),gy=SPINE;
+ C2(gx,gy,32,'rgba(200,147,10,0.07)');
+ C2(gx,gy,22,'rgba(200,147,10,0.12)');
+ const d=19,di=9;
+ poly(`${gx},${gy-d} ${gx+d},${gy} ${gx},${gy+d} ${gx-d},${gy}`,C.gold,'white',3);
+ poly(`${gx},${gy-di} ${gx+di},${gy} ${gx},${gy+di} ${gx-di},${gy}`,'#fff8e1');
+ T2(gx,gy-44,'GO-LIVE',{'font-family':'Syne,sans-serif','font-size':18,
+   'font-weight':800,'letter-spacing':'0.16em',fill:C.gold});
+ T2(gx,gy-27,'DEC 14, 2026',{'font-family':'DM Mono,monospace','font-size':12,
+   fill:'rgba(200,147,10,0.62)','letter-spacing':'0.06em'});}
+
+
+// ── TRACK GROUP ANNOTATIONS ───────────────────────────────────────────────
+function trackLabel(w,y,txt,col,above,stack){
+  const x=wx(w);
+  const tw=txt.length*5.8+18;
+  const s=stack||0;
+  const base=above?-(17+s*19):(7+s*19);
+  const ty=y+base;
+  R(x-tw/2,ty,tw,16,'rgba(245,248,252,0.94)',3,1,col,0.55,gTop);
+  T2(x,ty+11,txt,{'font-size':9.5,'font-weight':600,fill:col,'letter-spacing':'0.04em'},gTop);
+}
+// Infra
+trackLabel(1.5,YI,'Cluster Provisioning',C.infra,true,0);
+trackLabel(3.2,YI,'Platform Services',C.infra,true,1);
+trackLabel(2.0,YI,'Networking & Certs',C.infra,false,0);
+trackLabel(4.2,YI,'Shared Libs',C.infra,false,1);
+// Control Plane
+trackLabel(9.5,YC,'Mgmt API + Registry',C.ctrl,true);
+trackLabel(13.5,YC,'GitOps',C.ctrl,false);
+trackLabel(15.5,YC,'Ops + Audit',C.ctrl,true);
+trackLabel(14.8,YC,'Console',C.ctrl,false);
+trackLabel(20.5,YC,'Observability',C.ctrl,true);
+// Edge & CDN
+trackLabel(6.0,YE,'Ramp-up',C.edge,false);
+trackLabel(8.0,YE,'Akamai',C.edge,true);
+trackLabel(10.5,YE,'Cloudflare',C.edge,false);
+trackLabel(13.5,YE,'WAF-as-Code + DR',C.edge,true);
+// Network & VAN
+trackLabel(8.0,YN,'Public Internet',C.netvan,false);
+trackLabel(12.0,YN,'VAN / Private',C.netvan,true);
+// API Gateway
+trackLabel(6.5,YG,'Container Foundation',C.apiGW,true);
+trackLabel(9.0,YG,'Sidecar Templates',C.apiGW,false);
+trackLabel(11.5,YG,'Gateway Deploy',C.apiGW,true);
+trackLabel(15.5,YG,'Control Plane Wiring',C.apiGW,false);
+// Identity & Auth — HSM label added as first milestone
+trackLabel(6.5,YA,'HSM + Keys',C.idAuth,true,0);
+trackLabel(7.0,YA,'IdP Setup',C.idAuth,false);
+trackLabel(9.5,YA,'Auth Track',C.idAuth,true);
+trackLabel(14.0,YA,'Session Track',C.idAuth,false);
+trackLabel(21.5,YA,'Testing',C.idAuth,true);
+// Authorization
+trackLabel(10.0,YP,'OPA Policy Engine',C.authz,true);
+trackLabel(20.0,YP,'Context Propagator',C.authz,false);
+// Release spine — expanded with GSIB hardening gates
+trackLabel(24.5,SPINE,'Pen Test + Arch',C.release,false);
+trackLabel(26.0,SPINE,'SIEM + IR Ready',C.release,true);
+trackLabel(27.5,SPINE,'Load Test',C.release,false);
+trackLabel(28.5,SPINE,'DR \u00b7 Kafka MC',C.release,true);
+trackLabel(30.5,SPINE,'Traffic Migration',C.release,false);
+
+
+</script>
+  </div>
+
+  <div id="panel" style="flex:1 1 auto;min-width:280px;min-width:0;background:#f5f8fc;
+    border-radius:16px;box-shadow:0 4px 24px rgba(15,35,80,0.10);
+    overflow-y:auto;max-height:98vh;position:sticky;top:28px;
+    font-family:'DM Sans',sans-serif;">
+    <div style="background:#0f2340;border-radius:16px 16px 0 0;padding:14px 16px 10px;
+    position:sticky;top:0;z-index:10;">
+    <div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:800;
+      color:white;letter-spacing:0.18em;">DEVELOPER CHECKLIST</div>
+    <div style="font-size:8.5px;color:rgba(255,255,255,0.38);margin-top:2px;">
+      Execution order &middot; click section to expand</div>
+  </div>
+  <div id="cl-body" style="padding:8px 8px 20px;"></div>
+</div>
+
+</div>
+
+<script>
+const SECTIONS=[
+  {n:1, col:C.infra, lbl:'Infrastructure & Environments',
+   sub:'P0 \u00b7 3 engineers \u00b7 5 weeks \u00b7 must complete before any squad begins',
+   groups:[
+     {lbl:'Account & Cluster Provisioning', mapW:0.5, items:[
+       {t:'Submit SEAL PTB request \u2014 platform scope, compliance + data classification', note:'Gov', phase:'P0'},
+       {t:'Raise JPM AWS account request for CIB Unified Ingress (NA, EMEA, APAC)', note:'AWS', phase:'P0'},
+       {t:'Raise GKP project request for CIB Unified Ingress clusters (NA, EMEA, APAC)', note:'GKP', phase:'P0'},
+       {t:'Provision EKS clusters: us-east-2 (primary), us-east-1, eu-west-1/2, eu-central-1, ap-southeast-1/2 \u2014 node pools sized for Envoy/Kong', note:'AWS', phase:'P0'},
+       {t:'Provision GKP clusters: CDC1/CDC2/RDC (NA), Farn/Basi (EMEA), Equi-HK/SG-C01 (APAC) \u2014 namespaces, RBAC, network policies', note:'GKP', phase:'P0'},
+     ]},
+     {lbl:'Networking & Certificates', mapW:1.5, items:[
+       {t:'Configure VPC peering: EKS clusters \u2192 CTC Edge perimeter endpoints per region', note:'Net', phase:'P0'},
+       {t:'Configure GKP network policy: allow PSaaS+ \u2192 gateway namespace, restrict inter-namespace traffic', note:'Net', phase:'P0'},
+       {t:'Engage JPM cert-manager team: register CIB Unified Ingress as a consumer, confirm supported certificate types, SLA, and regional deployment', note:'Certs', phase:'P0'},
+       {t:'Register CIB ingress hostnames in Akamai certificate workflow and internal PKI', note:'Certs', phase:'P0'},
+       {t:'Install cert-manager in all clusters, configure ClusterIssuers for internal CA and Akamai edge certs', note:'Certs', phase:'P0'},
+     ]},
+     {lbl:'Platform Services', mapW:2.5, items:[
+       {t:'Provision Kafka cluster (RF=3), create topics: session-events, revocation-events, risk-signals, policy-bundle-push', note:'Kafka', phase:'P0'},
+       {t:'Configure Bitbucket repos: app code, Helm charts, GitOps manifests, OPA bundles \u2014 branch strategy and repo structure', note:'CI/CD', phase:'P0'},
+       {t:'Install ArgoCD in all clusters, configure ApplicationSets for multi-cluster GitOps sync', note:'CI/CD', phase:'P0'},
+       {t:'Configure Bitbucket Pipelines: Go build + test, Helm lint, OPA rego test, policy CI \u2014 block merge on failure', note:'CI/CD', phase:'P0'},
+       {t:'Deploy Dynatrace OneAgent to all cluster nodes, configure OTLP ingest endpoint', note:'Obs', phase:'P0'},
+     ]},
+     {lbl:'Shared Go Libraries', mapW:3.5, items:[
+       {t:'Write shared/otel: OTLP HTTP export, W3C TraceContext + Baggage, AlwaysSample \u2014 publish to internal artifact registry', note:'Libs', phase:'P0'},
+       {t:'Write shared/dpop: htm/htu/iat/jti validation, JWK thumbprint check, replay store with TTL eviction', note:'Libs', phase:'P0'},
+       {t:'Write shared/health: /health (liveness) and /health/detail (readiness with dependency checks)', note:'Libs', phase:'P0'},
+     ]},
+   ]},
+  {n:2, col:C.ctrl, lbl:'Control Plane & Management Plane',
+   sub:'P2+P5 \u00b7 8 engineers \u00b7 starts at foundation \u00b7 drives gateway configuration from day one',
+   groups:[
+     {lbl:'Management API & Registry', mapW:9.0, items:[
+       {t:'Design Postgres schema: routes (desired state), actual_routes, fleets, consumers, audit_log', note:'DB', phase:'P2'},
+       {t:'Implement Management API (Go/gin/pgx): /routes, /fleets, /consumers, /drift, /audit-log, /policy/validate', note:'API', phase:'P2'},
+       {t:'Implement route policy validation at commit time \u2014 block non-compliant routes before they hit the registry', note:'API', phase:'P2'},
+       {t:'Implement fleet management endpoints: register fleet, deregister fleet, list fleet instances + health', note:'API', phase:'P2'},
+     ]},
+     {lbl:'Ops & Audit', mapW:16.0, items:[
+       {t:'Implement drift detection goroutine: poll /snapshot/routes + /sync-status/routes every 10s, write divergence to actual_routes', note:'Ops', phase:'P2'},
+       {t:'Implement audit log: append-only, actor + timestamp + change path + before/after state, indexed for compliance', note:'Ops', phase:'P2'},
+     ]},
+     {lbl:'GitOps Pipeline', mapW:13.0, items:[
+       {t:'Configure ArgoCD ApplicationSets: deploy HTTPRoute + KongPlugin manifests to all target clusters on GitOps merge', note:'GitOps', phase:'P2'},
+       {t:'Configure Bitbucket policy CI: OPA rego test + route validation on every PR, block on failure, emergency override with mandatory audit trail', note:'GitOps', phase:'P2'},
+     ]},
+     {lbl:'DE Console', mapW:14.5, items:[
+       {t:'Build DE Console (React/TypeScript): Dashboard, Routes (CRUD + inline validation), Drift, Request Log (Dynatrace links), Sessions (single-click revoke), Traces', note:'UI', phase:'P2'},
+       {t:'Wire all Console pages to Management API \u2014 no direct DB access from UI', note:'UI', phase:'P2'},
+       {t:'Add load testing baseline: P99 <50ms gateway overhead, identify bottlenecks before auth layer added', note:'Test', phase:'P2'},
+     ]},
+     {lbl:'Observability', mapW:20.0, items:[
+       {t:'Instrument all Go services with shared/otel: consistent span names, attribute naming, sampling', note:'OTEL', phase:'P5'},
+       {t:'Implement W3C traceparent end-to-end; synthesise traceparent from x-akamai-request-id via SHA256 where absent', note:'OTEL', phase:'P5'},
+       {t:'Add auth pipeline spans: auth.step, dpop.valid, opa.allow, opa.deny_reason, latency per step', note:'OTEL', phase:'P5'},
+       {t:'Configure Dynatrace OTLP ingest, build dashboards: request waterfall, auth step timing, gateway throughput/latency/error rate', note:'DT', phase:'P5'},
+       {t:'Define SLOs: availability 99.99%, P99 <50ms, revocation <1s, auth pipeline <20ms \u2014 configure alerting', note:'SLOs', phase:'P5'},
+       {t:'Add /health (liveness) and /health/detail (readiness: JWKS, OPA bundle, Kafka, DB) to all services', note:'Health', phase:'P5'},
+     ]},
+   ]},
+  {n:3, col:C.edge, lbl:'Edge & CDN',
+   sub:'P1 \u00b7 L0\u2013L2 \u00b7 6 engineers shared with Network + Gateway',
+   groups:[
+     {lbl:'Akamai Configuration', mapW:7.0, items:[
+       {t:'Configure Akamai GTM: GeoDNS NA/EMEA/APAC, composite health check (gateway capacity + auth pipeline), TTL 30s, hysteresis on recovery', note:'GTM', phase:'P1'},
+       {t:'Configure Akamai Ion CDN: TLS edge certificates, cache policy (no-cache auth, short TTL API, static CDN)', note:'CDN', phase:'P1'},
+       {t:'Configure Akamai Kona WAF: OWASP CRS, bot management, CIB custom rules, DDoS thresholds', note:'WAF', phase:'P1'},
+     ]},
+     {lbl:'Cloudflare Configuration', mapW:9.5, items:[
+       {t:'Configure Cloudflare LB: origin pools mirroring GTM regions, health checks matching GTM thresholds, weighted routing 50/50', note:'CF', phase:'P1'},
+       {t:'Configure Cloudflare Edge WAF: OWASP CRS + CIB custom rules from GitOps repo, DDoS, bot management \u2014 ruleset must match Akamai exactly', note:'CF', phase:'P1'},
+     ]},
+     {lbl:'WAF-as-Code & DR', mapW:12.0, items:[
+       {t:'Build WAF-as-code pipeline: Bitbucket stores normalised ruleset, pipeline pushes to both Akamai Kona API + Cloudflare Ruleset API on merge', note:'WAF', phase:'P1'},
+       {t:'Implement cross-vendor WAF drift check: compare active rulesets from both vendor APIs on schedule, alert if diverge >60s', note:'WAF', phase:'P1'},
+       {t:'Write + test CDN bypass runbook: DNS cutover to PSaaS+/AWS WAF direct, security sign-off step, quarterly test schedule', note:'DR', phase:'P1'},
+     ]},
+   ]},
+  {n:4, col:C.netvan, lbl:'Network & VAN Ingress',
+   sub:'P1 \u00b7 L3 \u00b7 public internet path + VAN/private circuit (on-prem only)',
+   groups:[
+     {lbl:'Public Internet Path', mapW:8.0, items:[
+       {t:'Engage PSaaS+ team: register GKP cluster endpoints as origin targets for CDC1/CDC2/RDC, Farn/Basi, SG-C01', note:'PSaaS+', phase:'P1'},
+       {t:'Configure PSaaS+ forwarding: route public internet ingress to L4 endpoints, inject x-psaas-region + x-psaas-datacenter, TLS re-origination', note:'PSaaS+', phase:'P1'},
+       {t:'Engage CTC Edge team: register EKS endpoints for us-east-1/2, eu-west-1/2, eu-central-1, ap-southeast-1/2', note:'CTC', phase:'P1'},
+       {t:'Configure CTC Edge forwarding: route public internet traffic to L4 gateway endpoints, TLS re-origination per region', note:'CTC', phase:'P1'},
+     ]},
+     {lbl:'VAN / PSaaS+ Business Partner', mapW:11.0, items:[
+       {t:'Engage PSaaS+ Business Partner team: PSaaS+ BP is a managed firm offering \u2014 raise onboarding request to register CIB Unified Ingress as a new consumer and provision route targets pointing to GKP gateway endpoints', note:'VAN', phase:'P1'},
+       {t:'Configure PSaaS+ Business Partner routing rules: define per-datacenter route targets (CDC1/CDC2/RDC, Farn/Basi, SG-C01), TLS re-origination to L4, inject x-origin-type: van header before forwarding to gateway', note:'VAN', phase:'P1'},
+     ]},
+   ]},
+  {n:5, col:C.apiGW, lbl:'API Gateway & Data Plane Patterns',
+   sub:'P1+P2 \u00b7 L4 data plane + containerised fleet templates',
+   groups:[
+     {lbl:'Container Foundation', mapW:5.5, items:[
+       {t:'Pull firm RHEL 9 base image, validate: non-root UID, FIPS-validated Go BoringCrypto build, internal CA chain present', note:'Base', phase:'P1'},
+       {t:'Write Envoy Helm chart: Deployment, Service, xDS bootstrap ConfigMap (listener :10000, admin :9901), HPA (CPU 70%), PDB (minAvailable 2)', note:'Envoy', phase:'P1'},
+       {t:'Write Kong Helm chart: DB-less mode, declarative ConfigMap, HPA, PDB, base plugins (CORS, OTel, correlation-id), admin API internal-only', note:'Kong', phase:'P1'},
+     ]},
+     {lbl:'Sidecar Templates', mapW:7.5, items:[
+       {t:'Write sidecar pod spec patch: Session Validator (:9001) + OPA PDP (:8181, bundle volume) + OTEL Collector (:4317 \u2192 Dynatrace)', note:'Sidecars', phase:'P1'},
+       {t:'Implement Session Validator (Go): ext_authz gRPC on :9001, DPoP verify, revoke cache lookup, JWKS local validation \u2014 zero network call in happy path', note:'Auth', phase:'P1'},
+       {t:'Configure OPA PDP sidecar: load bundle from init container, subscribe Kafka policy-bundle-push for hot reload, /v1/data on :8181, target <1ms Rego eval', note:'OPA', phase:'P1'},
+       {t:'Configure OTEL Collector sidecar: receive spans :4317 gRPC, batch + forward to Dynatrace OTLP, buffer if backend unavailable', note:'OTEL', phase:'P1'},
+     ]},
+     {lbl:'Gateway Deployment', mapW:10.0, items:[
+       {t:'Implement fleet provisioning: given fleet name + type + regions, runs helm install Envoy + Kong + sidecars, registers fleet in /fleets', note:'Fleet', phase:'P1'},
+       {t:'Implement Kong admin proxy + reconciler (Go): consume Registry desired state, sync to Kong Admin API, expose /sync-status/routes', note:'Kong', phase:'P1'},
+     ]},
+     {lbl:'Control Plane Integration', mapW:15.0, items:[
+       {t:'Implement Envoy gRPC ADS server (go-control-plane): snapshot builder translates Registry routes to LDS/RDS/CDS/EDS, push on Registry change, validate propagation <5s', note:'ADS', phase:'P2'},
+       {t:'Implement Envoy filter chain: jwt_authn \u2192 ext_authz (Session Validator) \u2192 ext_authz (OPA) \u2192 Context Propagator', note:'Filter', phase:'P2'},
+       {t:'Define route schema in Registry: host, path prefix, origin type, fleet ID, upstream, rate limit, DPoP required, mTLS required, HRL attributes', note:'Routes', phase:'P2'},
+       {t:'Build route validation rules: enforce schema, check fleet exists, check upstream reachable, reject non-compliant at authoring time', note:'Routes', phase:'P2'},
+     ]},
+   ]},
+  {n:6, col:C.idAuth, lbl:'Identity & Auth',
+   sub:'P3 \u00b7 4 engineers \u00b7 16 weeks \u00b7 2 parallel tracks from foundation',
+   groups:[
+     {lbl:'Sentry / IdP Setup', mapW:6.5, items:[
+       {t:'[Auth] Register OAuth clients in Sentry: web (PKCE), API (client credentials), M2M \u2014 confirm OIDC discovery, JWKS, scopes, claims mapping', note:'Sentry', phase:'P3'},
+       {t:'[Auth] Validate Sentry/AuthE regional topology: one instance per NA/EMEA/APAC required \u2014 gates P3 completion', note:'Sentry', phase:'P3'},
+     ]},
+     {lbl:'Auth Track \u2014 Browser & API Clients', mapW:8.5, items:[
+       {t:'[Auth] Implement PKCE auth code flow: code_challenge (S256), code_verifier exchange, no client secret in browser, refresh token handling', note:'PKCE', phase:'P3'},
+       {t:'[Auth] Implement DPoP proof generation (WebCrypto API): ephemeral EC P-256 per session, sign htm + htu + iat + jti, attach to every request', note:'DPoP', phase:'P3'},
+       {t:'[Auth] Implement DPoP verification in Session Validator: validate htm/htu/iat (\u00b15s skew), jti uniqueness (10-min replay store), thumbprint binding to cnf', note:'DPoP', phase:'P3'},
+       {t:'[Auth] Implement JWKS cache in Session Validator: fetch from /session/jwks.json on startup, background refresh 60s, validate signature+exp+iss+aud locally', note:'JWKS', phase:'P3'},
+       {t:'[Auth] Configure mTLS on Envoy listeners for M2M + VAN traffic: extract client cert thumbprint, bind to token cnf as DPoP alternative', note:'mTLS', phase:'P3'},
+     ]},
+     {lbl:'Session Track \u2014 Session Management', mapW:12.0, items:[
+       {t:'[Session] Implement Session Manager core (Go): EC key pair generation via HSM (see \u00a79), publish JWKS at /session/jwks.json, issue session JWT (sub/sid/entity/client-type/DPoP thumbprint only)', note:'SM', phase:'P3'},
+       {t:'[Session] Deploy Session Manager to all regions via Helm: one instance per cloud+region, Kafka producer for session-events, independent JWKS rotation', note:'SM', phase:'P3'},
+       {t:'[Session] Implement session state replication: Kafka consumer on session-events, write to local store, verify cross-region lookup after delivery', note:'SM', phase:'P3'},
+       {t:'[Session] Implement CAEP event producer: publish to revocation-events on revocation / fraud signal / operator action \u2014 include sid, reason, timestamp', note:'CAEP', phase:'P3'},
+       {t:'[Session] Implement Revoke Cache in Session Validator: Kafka consumer on revocation-events, in-memory map of revoked sids, check every authenticated request', note:'Revoke', phase:'P3'},
+       {t:'[Session] Implement risk signal consumer: receive Cartographer/Interdiction signals from Kafka, trigger revocation or step-up based on severity', note:'Risk', phase:'P3'},
+       {t:'[Session] Configure short-TTL session JWT: 15-min exp, transparent refresh before expiry, validate blast radius bounded to TTL in threat model', note:'TTL', phase:'P3'},
+     ]},
+     {lbl:'Testing', mapW:21.0, items:[
+       {t:'Run revocation propagation test: issue session, revoke, measure gateway rejection latency across all regions under load \u2014 must achieve <1s SLA', note:'Test', phase:'P3'},
+     ]},
+   ]},
+  {n:7, col:C.authz, lbl:'Authorization & Policy',
+   sub:'P4 \u00b7 North-south only \u00b7 4 engineers \u00b7 runs parallel with P3',
+   groups:[
+     {lbl:'OPA Policy Engine', mapW:8.0, items:[
+       {t:'Deploy OPA sidecar to all Envoy + Kong pods using template from section 5 \u2014 verify bundle load <500ms, Rego eval <1ms p99 under load', note:'OPA', phase:'P4'},
+       {t:'Write Rego policy bundle: route_allowed rule, entity + client_type + origin_type vs ABAC PIP (HTTP, cached per sid 60s TTL), VAN branch with HRL region rules', note:'OPA', phase:'P4'},
+       {t:'Configure OPA bundle pipeline: versioned + signed, build on policy repo merge, notify gateway instances via Kafka policy-bundle-push, alert if instances diverge >60s', note:'OPA', phase:'P4'},
+     ]},
+     {lbl:'Context Propagator', mapW:19.5, items:[
+       {t:'Implement Context Propagator as Envoy Lua filter + Kong plugin: strip all client-supplied headers unconditionally, construct x-auth-sub/sid/entity/client-type/origin-type from verified JWT, drop unrecognised', note:'CP', phase:'P4'},
+     ]},
+   ]},
+  {n:8, col:C.release, lbl:'Hardening & Go-Live',
+   sub:'P6 \u00b7 all squads \u00b7 18 engineers \u00b7 10 weeks from Oct 12',
+   groups:[
+     {lbl:'Architecture Validation', mapW:24.5, items:[
+       {t:'Finalise sidecar resource limits: Sess Val 128Mi/0.1CPU, OPA 256Mi/0.2CPU, OTEL Collector 128Mi/0.1CPU \u2014 validate auth hot-path latency <2ms total over loopback', note:'Arch', phase:'P6'},
+       {t:'Sidecar failure isolation test: kill Session Validator on one pod, verify only that pod fails, rest of fleet continues unaffected', note:'Arch', phase:'P6'},
+     ]},
+     {lbl:'Multi-cloud & Security', mapW:25.5, items:[
+       {t:'Kill all EKS clusters, verify GKP serves with zero errors. Repeat in reverse. No cross-cloud dependency permitted.', note:'Validate', phase:'P6'},
+       {t:'Submit pen test to red team (raise at P2 start \u2014 lead time): scope DPoP bypass, token replay, JWT forgery, mTLS spoofing, OPA policy bypass, JWKS poisoning', note:'SecTest', phase:'P6'},
+     ]},
+     {lbl:'Disaster Recovery', mapW:28.5, items:[
+       {t:'State platform RTO target: <15 minutes under full regional failure \u2014 document recovery steps in runbook, validate via live regional outage simulation, CRO sign-off required', note:'RTO', phase:'P6'},
+       {t:'State platform RPO targets: 0 for active auth state, <1s for audit log, <5s for session state \u2014 validate via forced failover, reconcile via SIEM log comparison', note:'RPO', phase:'P6'},
+       {t:'Full regional failover sim: take NA offline, GTM triggers within one TTL, EMEA/APAC absorb load + hold SLOs, active sessions valid, NA re-enters with hold period', note:'DR', phase:'P6'},
+       {t:'CDN vendor failover exercise: simulate Akamai unavailability in GTM, verify Cloudflare takes 100%, validate WAF rule equivalence (no policy bypass in failover)', note:'DR', phase:'P6'},
+     ]},
+     {lbl:'Performance & Operations', mapW:29.0, items:[
+       {t:'Load test 150% volume, then fail a region at peak \u2014 surviving regions hold 99.99% availability + P99 <50ms. Adjust HPA if not met.', note:'Perf', phase:'P6'},
+       {t:'Write runbooks: pod failure, Kafka lag, JWKS failure, OPA bundle stale, SM regional outage, WAF drift alert, regional failover activation + re-entry procedure', note:'Ops', phase:'P6'},
+       {t:'Define on-call rotation + escalation matrix, wire Dynatrace alerts to on-call tooling', note:'Ops', phase:'P6'},
+     ]},
+     {lbl:'Traffic Migration', mapW:30.5, items:[
+       {t:'Execute phased traffic migration per LOB: 1% \u2192 10% \u2192 50% \u2192 100%. Monitor 24h per increment. Auto-rollback: error rate >0.1% or P99 >100ms. 2-week hypercare.', note:'Go-Live', phase:'P6'},
+     ]},
+   ]},
+  {n:9, col:C.secur, lbl:'Security & Resilience Foundations',
+   sub:'Cross-cutting \u00b7 GSIB-grade requirements \u00b7 must ship with v1.0 \u00b7 pre-launch blockers',
+   groups:[
+     {lbl:'Key Material & Secrets', mapW:6.5, items:[
+       {t:'HSM integration: provision Session Manager EC signing keys in CloudHSM (AWS) + nShield/Luna (on-prem), FIPS 140-2 Level 3 certified, per-region key replication, documented recovery procedure \u2014 GATES Session Manager deployment', note:'HSM', phase:'P3'},
+       {t:'mTLS private key HSM storage: all M2M + VAN mTLS keys provisioned in HSM, no private keys on disk or in Kubernetes Secrets, rotation automated via cert-manager', note:'HSM', phase:'P3'},
+       {t:'Deploy HashiCorp Vault cluster (or AWS Secrets Manager): centralise OAuth client secrets, Kafka SASL credentials, Postgres passwords, Akamai/Cloudflare API keys \u2014 Kubernetes Secrets alone is insufficient for GSIB', note:'Vault', phase:'P0'},
+       {t:'Enforce FIPS-validated Go builds in CI: BoringCrypto build constraint, block non-FIPS binaries from deployment via policy CI, covers all gateway + control plane services', note:'FIPS', phase:'P0'},
+       {t:'Deploy Kubernetes NetworkPolicies + Pod Security Standards (restricted profile): deny-by-default east-west traffic, allowlist per-namespace flows, block privileged pods across all clusters', note:'K8s', phase:'P0'},
+     ]},
+     {lbl:'Event Bus Resilience', mapW:9.0, items:[
+       {t:'Deploy Kafka MirrorMaker 2 for cross-region replication: NA \u2194 EMEA \u2194 APAC, <5s replication lag SLO, tested regional failover for all 4 topics', note:'Kafka MC', phase:'P5'},
+       {t:'Configure Dead Letter Queues for all topics: session-events-dlq, revocation-events-dlq, risk-signals-dlq, policy-bundle-push-dlq \u2014 alert on DLQ depth >0 within 30s', note:'DLQ', phase:'P0'},
+       {t:'Deploy Confluent Schema Registry: register Avro schemas for all 4 topics, enforce schema evolution rules (forward/backward compat), block incompatible schema changes in CI', note:'Schema', phase:'P0'},
+       {t:'Document + implement Kafka degraded-mode policy: revoke cache serves last-known-good on revocation-events outage, OPA fails-closed on policy-bundle-push unavailability, session-events queue locally \u2014 requires Infosec sign-off', note:'Degrade', phase:'P3'},
+       {t:'Quarterly Kafka partition failure simulation: kill one broker per region, verify consumer catch-up within 60s, validate no message loss across all 4 topics', note:'Test', phase:'P6'},
+     ]},
+     {lbl:'Data Plane Resilience', mapW:13.0, items:[
+       {t:'Postgres HA for Registry: primary + synchronous standby in-region, asynchronous standby cross-region, PITR backups every 15 min, automated failover via Patroni (or RDS Multi-AZ) tested <30s failover time', note:'PG-HA', phase:'P2'},
+       {t:'Deploy PgBouncer connection pooling in front of Postgres: transaction-mode pooling, max connections tuned per gateway pod count, prevents connection exhaustion', note:'PG-Pool', phase:'P2'},
+       {t:'Configure Envoy outlier_detection per cluster: 5xx threshold, consecutive errors, ejection + recovery windows \u2014 per-upstream circuit breakers with timeouts + retries using exponential backoff + jitter', note:'Circuit', phase:'P2'},
+       {t:'Configure Kong circuit-breaker plugin per route: failure threshold, half-open recovery, budget-aware cascading to prevent retry storms taking down backends', note:'Circuit', phase:'P2'},
+       {t:'OPA graceful degradation policy: on bundle staleness >60s OR PIP unreachable, serve last-known-good for reads, fail-closed for writes, log every degraded decision via SIEM channel \u2014 requires Infosec sign-off', note:'OPA', phase:'P4'},
+     ]},
+     {lbl:'Audit & Compliance', mapW:22.0, items:[
+       {t:'SIEM integration (Splunk HEC / QRadar API / Sentinel): forward all auth events (success + failure), OPA denials with deny reason, revocation events, all admin Registry actions \u2014 structured JSON, indexed for 7-year compliance queries', note:'SIEM', phase:'P5'},
+       {t:'Implement region-pinning enforcement in Registry: EU routes flagged in schema, control plane rejects cross-region routing in failover scenarios, documented exception approval workflow with audit trail', note:'Residency', phase:'P2'},
+       {t:'Write Incident Response playbooks (distinct from ops runbooks): token compromise, signing key compromise, WAF bypass 0-day, mTLS cert compromise, Kafka topic corruption \u2014 each with named owners, escalation matrix, forensic preservation steps, tabletop exercises', note:'IR', phase:'P6'},
+       {t:'Define + implement audit log retention: 7-year retention to S3 Glacier (or equivalent long-term object storage), WORM protection enabled, quarterly restore tests, alignment documented with CIB data governance policy', note:'Audit', phase:'P5'},
+     ]},
+     {lbl:'Future-Proofing', mapW:26.0, items:[
+       {t:'Publish PQC (Post-Quantum Cryptography) transition roadmap with named owner + quarterly milestones: hybrid X25519+ML-KEM-768 TLS rollout within 24 months starting at L2, ML-DSA for session JWT signing within 36 months \u2014 regulatory expectation from NYDFS/OCC', note:'PQC', phase:'P6'},
+       {t:'Automate mTLS certificate rotation end-to-end: cert-manager + Vault (or AWS Private CA) integration, 90/60/30 day expiry alerts forwarded to SIEM, tested seamless rotation without service restarts, zero cert-expiry incidents as SLO', note:'Certs', phase:'P1'},
+       {t:'Implement idempotency keys for state-changing operations: X-Idempotency-Key header required at gateway for POST/PUT/DELETE, 24h dedup store in Redis, returns cached response on replay \u2014 prevents double-payment / double-trade scenarios', note:'Idem', phase:'P2'},
+     ]},
+   ]},
+];
+(function(){
+  const body=document.getElementById('cl-body');
+  if(!body)return;
+  let html='';
+  SECTIONS.forEach(({n,col,lbl,sub,groups})=>{
+    const total=groups.reduce((a,g)=>a+g.items.length,0);
+    html+=`<div style="margin-bottom:4px;border-radius:8px;overflow:hidden;
+        box-shadow:0 1px 4px rgba(15,35,80,0.08);">
+      <div style="display:flex;align-items:stretch;
+          background:${col}20;border:1px solid ${col}30;border-radius:8px 8px 0 0;
+          border-bottom:none;">
+        <span style="background:${col};color:white;font-size:9px;font-weight:800;
+          width:22px;display:flex;align-items:center;justify-content:center;
+          border-radius:6px 0 0 0;flex-shrink:0;font-family:'Syne',sans-serif;">${n}</span>
+        <span style="padding:7px 8px;flex:1;min-width:0;">
+          <span style="display:block;font-size:10px;font-weight:700;color:${col};
+            font-family:'DM Sans',sans-serif;">${lbl}</span>
+          <span style="display:block;font-size:7.5px;color:rgba(15,35,80,0.45);
+            margin-top:1px;font-family:'DM Mono',monospace;">${sub}</span>
+        </span>
+        <span style="font-size:8px;color:rgba(15,35,80,0.3);padding:0 10px;
+          display:flex;align-items:center;font-family:'DM Mono',monospace;
+          white-space:nowrap;">${total} tasks</span>
+      </div>
+      <div style="border:1px solid ${col}22;border-top:none;border-radius:0 0 8px 8px;
+          background:white;padding:3px 0 4px;">
+        ${groups.map((grp,gi)=>`
+          <details style="margin:3px 6px 2px;">
+            <summary style="cursor:pointer;list-style:none;display:flex;
+                align-items:center;gap:5px;padding:3px 4px;border-radius:4px;
+                background:${col}0e;user-select:none;border-bottom:1px solid ${col}15;">
+              <span style="width:3px;height:12px;background:${col};
+                border-radius:2px;opacity:0.7;flex-shrink:0;"></span>
+              <span style="font-size:8.5px;font-weight:700;color:${col};
+                letter-spacing:0.05em;font-family:'Syne',sans-serif;flex:1;">${grp.lbl}</span>
+              <span style="font-size:7.5px;color:rgba(15,35,80,0.28);
+                font-family:'DM Mono',monospace;">${grp.items.length}</span>
+              <span class="gchev" style="font-size:9px;color:${col};opacity:0.5;
+                transition:transform 0.15s;margin-left:2px;">&#9654;</span>
+            </summary>
+            <div style="padding:2px 0 2px;">
+              ${grp.items.map((item,i)=>`
+                <label style="display:flex;align-items:flex-start;gap:6px;
+                    padding:3px 4px 3px 8px;border-radius:3px;cursor:pointer;
+                    background:${i%2===0?'rgba(255,255,255,0.9)':'rgba(15,35,80,0.012)'};
+                    margin-bottom:1px;">
+                  <input type="checkbox" style="margin-top:2px;flex-shrink:0;
+                    accent-color:${col};width:11px;height:11px;">
+                  <span style="font-size:8.5px;color:rgba(15,35,80,0.72);
+                    line-height:1.5;flex:1;">${item.t}</span>
+                  <span style="font-size:6.5px;font-weight:700;color:${col};
+                    background:${col}12;border:1px solid ${col}25;border-radius:3px;
+                    padding:1px 4px;white-space:nowrap;flex-shrink:0;
+                    letter-spacing:0.04em;align-self:flex-start;margin-top:2px;
+                    font-family:'DM Mono',monospace;">${item.note}</span>
+                </label>`).join('')}
+            </div>
+          </details>`).join('')}
+      </div>
+    </div>`;
+  });
+  body.innerHTML=html;
+  body.querySelectorAll('details').forEach(d=>{
+    d.addEventListener('toggle',()=>{
+      const ch=d.querySelector('.gchev');
+      if(ch)ch.style.transform=d.open?'rotate(90deg)':'';
+    });
+  });
+})();
+</script>
+</body>
+</html>
